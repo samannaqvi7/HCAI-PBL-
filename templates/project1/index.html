@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project1/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">Project 1 &ndash; Supervised Learning</div>
+    </div>
+
+    <div class="main-text">
+
+        <form method="POST" enctype="multipart/form-data" id="project1-form">
+            {% csrf_token %}
+
+            <details class="section" {% if upload_open or upload_error or not dataset_info %}open{% endif %}>
+                <summary><h2>1. Upload dataset</h2></summary>
+                <p class="centered-text">
+                    Upload a CSV file whose first row contains the feature names and
+                    whose last column is the label to predict.
+                </p>
+                <div class="field-row centered-text">
+                    <input type="file" name="csv_file" accept=".csv">
+                </div>
+                <div class="button-container">
+                    <button type="submit" name="action" value="upload">Upload</button>
+                </div>
+                {% if upload_error %}
+                    <p class="error-text centered-text">{{ upload_error }}</p>
+                {% endif %}
+
+                {% if dataset_info %}
+                <div class="dataset-summary">
+                    <p class="centered-text">
+                        <strong>Loaded file:</strong> {{ dataset_info.filename }}
+                        &mdash; {{ dataset_info.n_rows }} rows, {{ dataset_info.n_features }} features
+                    </p>
+
+                    <table class="summary-table">
+                        <caption>Feature statistics</caption>
+                        <thead>
+                            <tr><th>Feature</th><th>Mean</th><th>Std</th><th>Min</th><th>Max</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for row in dataset_info.feature_stats %}
+                            <tr>
+                                <td>{{ row.feature }}</td>
+                                <td>{{ row.mean }}</td>
+                                <td>{{ row.std }}</td>
+                                <td>{{ row.min }}</td>
+                                <td>{{ row.max }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <p class="centered-text">
+                        <strong>{{ dataset_info.label_column }} distribution:</strong>
+                        {% for label, count in dataset_info.class_counts.items %}{{ label }}: {{ count }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </p>
+
+                    <table class="summary-table">
+                        <caption>First rows</caption>
+                        <thead>
+                            <tr>
+                                {% for col in dataset_info.preview_columns %}<th>{{ col }}</th>{% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in dataset_info.preview_rows %}
+                            <tr>
+                                {% for val in row %}<td>{{ val }}</td>{% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </details>
+
+            {% if feature_columns %}
+            <div class="section">
+                <h2>2. Visualize</h2>
+                <div class="field-row">
+                    <label for="x_feature">X axis</label>
+                    <select name="x_feature" id="x_feature">
+                        {% for f in feature_columns %}
+                            <option value="{{ f }}" {% if f == x_feature %}selected{% endif %}>{{ f }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="y_feature">Y axis</label>
+                    <select name="y_feature" id="y_feature">
+                        {% for f in feature_columns %}
+                            <option value="{{ f }}" {% if f == y_feature %}selected{% endif %}>{{ f }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="button-container">
+                    <button type="submit" name="action" value="plot">Update plot</button>
+                </div>
+
+                <div class="plot-container">
+                    <img src="{{ plot_url }}" alt="Data plot" class="plot-image">
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>3. Train a model</h2>
+
+                <div class="field-row">
+                    <label for="model">Model</label>
+                    <select name="model" id="model">
+                        {% for key, m in models.items %}
+                            <option value="{{ key }}" {% if key == selected_model %}selected{% endif %}>{{ m.label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="hyperparam" id="hyperparam-label">{{ hyperparam_label }}</label>
+                    <input type="number" step="any" name="hyperparam" id="hyperparam" value="{{ selected_hyperparam }}">
+                </div>
+
+                <div class="field-row">
+                    <label for="test_size">Test set size</label>
+                    <select name="test_size" id="test_size">
+                        {% for pct in test_size_options %}
+                            <option value="{{ pct }}" {% if pct == selected_test_size %}selected{% endif %}>{{ pct }}%</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="score">Score</label>
+                    <select name="score" id="score">
+                        {% for key, label in scores.items %}
+                            <option value="{{ key }}" {% if key == selected_score %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="button-container">
+                    <button type="submit" name="action" value="train">Train model</button>
+                    <button type="submit" name="action" value="sweep">Sweep hyperparameter</button>
+                </div>
+
+                {% if error %}
+                    <p class="error-text centered-text">{{ error }}</p>
+                {% elif sweep_results %}
+                    <h3 class="centered-text">
+                        Best {{ hyperparam_label }}: {{ sweep_best_value }}
+                        ({{ score_label }}: {{ sweep_best_score }})
+                    </h3>
+
+                    <div class="plot-container">
+                        <img src="{{ sweep_plot_url }}" alt="Hyperparameter sweep plot" class="plot-image">
+                    </div>
+
+                    <table class="summary-table">
+                        <caption>{{ score_label }} per {{ hyperparam_label }}</caption>
+                        <thead>
+                            <tr><th>{{ hyperparam_label }}</th><th>{{ score_label }}</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for value, score in sweep_results %}
+                            <tr {% if value == sweep_best_value %}class="best-row"{% endif %}>
+                                <td>{{ value }}</td>
+                                <td>{{ score }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% elif has_result %}
+                    <h3 class="centered-text">{{ score_label }}: {{ result }}</h3>
+
+                    {% if feature_importance.type == 'single' %}
+                    <table class="summary-table">
+                        <caption>Feature importance</caption>
+                        <thead>
+                            <tr><th>Feature</th><th>Importance</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for row in feature_importance.rows %}
+                            <tr><td>{{ row.feature }}</td><td>{{ row.value }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% elif feature_importance.type == 'per_class' %}
+                    <table class="summary-table">
+                        <caption>Coefficients per class</caption>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                {% for c in feature_importance.classes %}<th>{{ c }}</th>{% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in feature_importance.rows %}
+                            <tr>
+                                <td>{{ row.feature }}</td>
+                                {% for v in row.values %}<td>{{ v }}</td>{% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% elif feature_importance.type == 'unsupported' %}
+                    <p class="centered-text"><em>k-Nearest Neighbors doesn't learn explicit feature weights, so no feature importance is shown.</em></p>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </form>
+
+    </div>
+</div>
+
+{{ models|json_script:"models-config" }}
+
+{% endblock %}
+
+{% block script %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modelsConfig = JSON.parse(document.getElementById('models-config').textContent);
+        const modelSelect = document.getElementById('model');
+        const hyperparamInput = document.getElementById('hyperparam');
+        const hyperparamLabel = document.getElementById('hyperparam-label');
+
+        if (!modelSelect) {
+            return;
+        }
+
+        function applyModelConfig(key) {
+            const cfg = modelsConfig[key];
+            hyperparamLabel.textContent = cfg.hyperparam_label;
+            hyperparamInput.min = cfg.hyperparam_min;
+            hyperparamInput.max = cfg.hyperparam_max;
+        }
+
+        modelSelect.addEventListener('change', function () {
+            applyModelConfig(this.value);
+            hyperparamInput.value = modelsConfig[this.value].hyperparam_default;
+        });
+
+        applyModelConfig(modelSelect.value);
+    });
+
+    // Every button submits the same form and reloads the whole page, which
+    // would otherwise reset the scroll position back to the top each time.
+    // Wait for 'load' (not 'DOMContentLoaded') so the plot image has already
+    // finished loading and the page has reached its final height.
+    window.addEventListener('load', function () {
+        const savedScroll = sessionStorage.getItem('project1_scroll');
+        if (savedScroll !== null) {
+            window.scrollTo(0, parseInt(savedScroll, 10));
+            sessionStorage.removeItem('project1_scroll');
+        }
+
+        const form = document.getElementById('project1-form');
+        form.addEventListener('submit', function () {
+            sessionStorage.setItem('project1_scroll', window.scrollY);
+        });
+    });
+</script>
+{% endblock script %}

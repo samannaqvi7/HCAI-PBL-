@@ -1,0 +1,90 @@
+.box {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin: 40px auto;
+}
+
+.section {
+    margin: 25px 0;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.section h2 {
+    font-size: 22px;
+}
+
+.field-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.field-row label {
+    font-weight: bold;
+}
+
+.field-row select,
+.field-row input[type="number"] {
+    padding: 5px;
+    font-size: 16px;
+}
+
+.plot-container {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.plot-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+}
+
+.error-text {
+    color: #b00020;
+}
+
+summary {
+    cursor: pointer;
+}
+
+summary h2 {
+    display: inline;
+}
+
+.dataset-summary {
+    margin-top: 15px;
+}
+
+.summary-table {
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-size: 15px;
+}
+
+.summary-table caption {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.summary-table th,
+.summary-table td {
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    text-align: center;
+}
+
+.summary-table th {
+    background-color: #f2f2f2;
+}
+
+.summary-table tr.best-row td {
+    background-color: #dff0d8;
+    font-weight: bold;
+}
