@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project3/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">Project 3 &ndash; Active Learning for Learning-to-Defer</div>
+    </div>
+
+    <div class="main-text">
+
+        <details class="section" open>
+            <summary><h2>1. Baseline classifier</h2></summary>
+            <p class="centered-text">
+                TF-IDF (20,000 features, unigrams + bigrams) + logistic regression, trained
+                on the full 120,000-article AG News training set.
+            </p>
+            <div class="metric-grid">
+                <div class="metric-tile highlight">
+                    <span class="value">{{ metrics.baseline.test_accuracy|floatformat:4 }}</span>
+                    <span class="label">Test accuracy</span>
+                </div>
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>2. Simulated expert</h2></summary>
+            <p class="centered-text">
+                Per-class competence rather than uniform noise &mdash; strong on Sports/Sci-Tech,
+                weak (near-chance) on World/Business, with errors biased toward the other weak class.
+            </p>
+            <div class="metric-grid">
+                <div class="metric-tile highlight">
+                    <span class="value">{{ metrics.expert.overall_accuracy|floatformat:4 }}</span>
+                    <span class="label">Overall accuracy</span>
+                </div>
+                {% for name, acc in metrics.expert.per_class_accuracy.items %}
+                <div class="metric-tile">
+                    <span class="value">{{ acc|floatformat:3 }}</span>
+                    <span class="label">{{ name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="plot-container">
+                <img src="{% url 'project3:plot' 'expert_per_class.png' %}" alt="Expert per-class accuracy" class="plot-image">
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>3. Learning to defer</h2></summary>
+            <p class="centered-text">
+                A second classifier predicts, per article, whether deferring to the expert
+                would help; the operating threshold ({{ metrics.defer.best_threshold|floatformat:3 }})
+                is chosen by sweeping for the accuracy-maximizing point, not fixed at 0.5.
+            </p>
+            <div class="metric-grid">
+                <div class="metric-tile">
+                    <span class="value">{{ metrics.defer.ai_alone_accuracy|floatformat:4 }}</span>
+                    <span class="label">AI-alone</span>
+                </div>
+                <div class="metric-tile">
+                    <span class="value">{{ metrics.defer.expert_alone_accuracy|floatformat:4 }}</span>
+                    <span class="label">Expert-alone</span>
+                </div>
+                <div class="metric-tile highlight">
+                    <span class="value">{{ metrics.defer.system_accuracy_at_best|floatformat:4 }}</span>
+                    <span class="label">System (defer)</span>
+                </div>
+                <div class="metric-tile">
+                    <span class="value">{{ metrics.defer.oracle_accuracy|floatformat:4 }}</span>
+                    <span class="label">Oracle</span>
+                </div>
+                <div class="metric-tile">
+                    <span class="value">{{ metrics.defer.deferral_rate_at_best|floatformat:4 }}</span>
+                    <span class="label">Deferral rate</span>
+                </div>
+            </div>
+            <div class="plot-container">
+                <img src="{% url 'project3:plot' 'coverage_curve.png' %}" alt="Coverage/accuracy curve" class="plot-image">
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>4. Active learning for expert competence discovery</h2></summary>
+            <p class="centered-text">
+                Uncertainty sampling (querying the expert on the least-confident training
+                articles) vs. random sampling, over a budget of
+                {{ metrics.active_learning.budget }} queries. System accuracy stays flat for
+                both at this budget (an honest finding, not a bug), but uncertainty sampling's
+                queried points are 7&ndash;10&times; richer in "deferring would help" signal;
+                random sampling is slightly better for unbiased competence-profile estimation.
+            </p>
+            <div class="plot-row">
+                <div class="plot-container">
+                    <img src="{% url 'project3:plot' 'active_learning_accuracy.png' %}" alt="Active learning accuracy" class="plot-image">
+                </div>
+                <div class="plot-container">
+                    <img src="{% url 'project3:plot' 'active_learning_defer_density.png' %}" alt="Active learning defer density" class="plot-image">
+                </div>
+            </div>
+            <div class="plot-container">
+                <img src="{% url 'project3:plot' 'active_learning_competence_mae.png' %}" alt="Active learning competence MAE" class="plot-image">
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>5. Full report</h2></summary>
+            <p class="centered-text">
+                A PDF report with the full methodology, design justification, and detailed
+                results is available for download.
+            </p>
+            <div class="button-container">
+                <a href="{% url 'project3:download_report' %}"><button type="button">Download report (PDF)</button></a>
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>6. Live demo</h2></summary>
+            <p class="centered-text">
+                Pick a real test-set article and see the system's prediction, deferral
+                decision, and (if deferred) the simulated expert's answer.
+            </p>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="field-row">
+                    <label for="demo_index">Article</label>
+                    <select name="demo_index" id="demo_index">
+                        {% for s in demo_samples %}
+                            <option value="{{ s.index }}" {% if s.index == selected_demo_index %}selected{% endif %}>
+                                {{ s.text|truncatechars:90 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="button-container">
+                    <button type="submit">Run</button>
+                </div>
+            </form>
+
+            {% if demo_result %}
+            <div class="article-text">{{ demo_result.sample.text }}</div>
+            <table class="summary-table">
+                <tbody>
+                    <tr><th>True topic</th><td>{{ demo_result.sample.true_label_name }}</td></tr>
+                    <tr><th>AI prediction</th><td>{{ demo_result.ai_prediction }} (confidence {{ demo_result.ai_confidence|floatformat:3 }})</td></tr>
+                    <tr><th>Defer probability</th><td>{{ demo_result.defer_probability|floatformat:3 }} (threshold {{ demo_result.defer_threshold|floatformat:3 }})</td></tr>
+                    <tr><th>Decision</th><td>{% if demo_result.will_defer %}Defer to expert{% else %}Use AI prediction{% endif %}</td></tr>
+                    {% if demo_result.will_defer %}
+                    <tr><th>Expert prediction</th><td>{{ demo_result.expert_prediction }}</td></tr>
+                    {% endif %}
+                    <tr>
+                        <th>Final prediction</th>
+                        <td class="{% if demo_result.correct %}result-correct{% else %}result-incorrect{% endif %}">
+                            {{ demo_result.final_prediction }}
+                            {% if demo_result.correct %}(correct){% else %}(incorrect){% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            {% endif %}
+        </details>
+
+        <details class="section">
+            <summary><h2>7. Be the expert (optional)</h2></summary>
+            <p class="centered-text">
+                Play the role of the human expert: label the training articles the active
+                learning strategy would query first, and compare your own accuracy against
+                the simulated expert's designed competence profile.
+            </p>
+            <div class="button-container">
+                <a href="{% url 'project3:expert_session' %}"><button type="button">Start labeling</button></a>
+            </div>
+        </details>
+
+    </div>
+</div>
+
+{% endblock %}

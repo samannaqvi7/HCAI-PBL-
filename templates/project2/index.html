@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project2/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div id="project2-loading" class="loading-banner">
+        <span class="loading-bar"></span>
+        <span class="loading-text">Working on it&hellip;</span>
+    </div>
+
+    <div class="title-container">
+        <div class="title">Project 2 &ndash; Explainability</div>
+    </div>
+
+    <div class="main-text">
+
+        <form method="POST" id="project2-form">
+            {% csrf_token %}
+
+            <details class="section" open>
+                <summary><h2>1. Model &amp; regularization</h2></summary>
+
+                <div class="field-row">
+                    <label for="model_type">Model</label>
+                    <select name="model_type" id="model_type">
+                        <option value="tree" {% if selected_model_type == 'tree' %}selected{% endif %}>Decision Tree</option>
+                        <option value="logreg" {% if selected_model_type == 'logreg' %}selected{% endif %}>Logistic Regression</option>
+                    </select>
+                </div>
+
+                <div class="field-row">
+                    <label for="lam">Regularization (&lambda;)</label>
+                    <input type="range" name="lam" id="lam"
+                           min="{{ lambda_min }}" max="{{ lambda_max }}" step="{{ lambda_step }}"
+                           value="{{ selected_lambda }}"
+                           oninput="document.getElementById('lam-value').textContent = this.value">
+                    <span id="lam-value">{{ selected_lambda }}</span>
+                </div>
+
+                <div class="button-container">
+                    <button type="submit" name="action" value="train">Update model</button>
+                </div>
+
+                {% if model_info %}
+                <div class="model-summary">
+                    <p class="centered-text">
+                        <strong>Test accuracy:</strong> {{ model_info.acc }}
+                        &mdash; <strong>{{ model_info.omega_label }}:</strong> {{ model_info.omega }}
+                    </p>
+
+                    {% if model_info.model_type == 'tree' %}
+                    <div class="plot-container">
+                        <img src="{{ model_info.tree_plot_url }}" alt="Decision tree" class="plot-image">
+                    </div>
+                    {% else %}
+                    <table class="summary-table">
+                        <caption>Nonzero coefficients per class</caption>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                {% for c in model_info.coef_table.classes %}<th>{{ c }}</th>{% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in model_info.coef_table.rows %}
+                            <tr>
+                                <td>{{ row.feature }}</td>
+                                {% for v in row.values %}<td>{{ v }}</td>{% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not model_info.coef_table.rows %}
+                    <p class="centered-text"><em>All coefficients are zero at this &lambda; &mdash; the model always predicts the majority class.</em></p>
+                    {% endif %}
+                    {% endif %}
+
+                    <p class="centered-text">
+                        Accuracy vs. complexity across all {{ model_info.omega_label|lower }} trained &mdash;
+                        the selected model (highlighted) maximizes accuracy &minus; &lambda;&times;&Omega;.
+                    </p>
+                    <div class="plot-container">
+                        <img src="{{ model_info.tradeoff_plot_url }}" alt="Accuracy vs. complexity tradeoff" class="plot-image">
+                    </div>
+                </div>
+                {% endif %}
+            </details>
+
+            <details class="section" open>
+                <summary><h2>2. Counterfactual</h2></summary>
+
+                <div class="field-row">
+                    <label for="row_index">Example</label>
+                    <select name="row_index" id="row_index">
+                        {% for r in row_options %}
+                            <option value="{{ r.index }}" {% if r.index == selected_row %}selected{% endif %}>{{ r.label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="target_label">Target species</label>
+                    <select name="target_label" id="target_label">
+                        {% for s in species_options %}
+                            <option value="{{ s }}" {% if s == selected_target %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="button-container">
+                    <button type="submit" name="action" value="counterfactual">Find counterfactuals</button>
+                </div>
+
+                {% if counterfactual_error %}
+                    <p class="error-text centered-text">{{ counterfactual_error }}</p>
+                {% endif %}
+
+                {% if x_row %}
+                    <p class="centered-text">
+                        <strong>Selected example:</strong>
+                        {{ x_row.species }}, {{ x_row.island }}, {{ x_row.sex }}, {{ x_row.year }},
+                        bill {{ x_row.bill_length_mm|floatformat:1 }}&times;{{ x_row.bill_depth_mm|floatformat:1 }}mm,
+                        flipper {{ x_row.flipper_length_mm|floatformat:0 }}mm,
+                        mass {{ x_row.body_mass_g|floatformat:0 }}g
+                    </p>
+                {% endif %}
+
+                {% if counterfactual_rows %}
+                    <p class="centered-text"><em>Highlighted values differ from the selected example.</em></p>
+                    <table class="summary-table">
+                        <caption>Top counterfactuals (target: {{ selected_target }})</caption>
+                        <thead>
+                            <tr>
+                                {% for col in counterfactual_columns %}<th>{{ col }}</th>{% endfor %}
+                                <th>Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in counterfactual_rows %}
+                            <tr>
+                                {% for cell in row.cells %}
+                                <td class="{% if cell.changed %}cf-changed{% endif %}">
+                                    {{ cell.value }}{% if cell.delta %} <span class="cf-delta">{{ cell.delta }}</span>{% endif %}
+                                </td>
+                                {% endfor %}
+                                <td>{{ row.distance }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </details>
+
+            <details class="section" open>
+                <summary><h2>3. Feature effect plots</h2></summary>
+
+                <div class="field-row">
+                    <label for="feature">Feature</label>
+                    <select name="feature" id="feature">
+                        {% for f in feature_options %}
+                            <option value="{{ f.key }}" {% if f.key == selected_feature %}selected{% endif %}>{{ f.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="button-container">
+                    <button type="submit" name="action" value="effects">Show PDP / ALE</button>
+                </div>
+
+                {% if pdp_plot_url %}
+                <div class="plot-row">
+                    <div class="plot-container">
+                        <img src="{{ pdp_plot_url }}" alt="PDP plot" class="plot-image">
+                    </div>
+                    <div class="plot-container">
+                        <img src="{{ ale_plot_url }}" alt="ALE plot" class="plot-image">
+                    </div>
+                </div>
+                {% endif %}
+            </details>
+
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+    const PROJECT2_ACTION_LABELS = {
+        train: 'Training…',
+        counterfactual: 'Searching…',
+        effects: 'Computing…',
+    };
+
+    window.addEventListener('load', function () {
+        const savedScroll = sessionStorage.getItem('project2_scroll');
+        if (savedScroll !== null) {
+            window.scrollTo(0, parseInt(savedScroll, 10));
+            sessionStorage.removeItem('project2_scroll');
+        }
+
+        const form = document.getElementById('project2-form');
+        form.addEventListener('submit', function (event) {
+            sessionStorage.setItem('project2_scroll', window.scrollY);
+
+            const submitButtons = form.querySelectorAll('button[type="submit"]');
+            submitButtons.forEach(function (btn) {
+                btn.disabled = true;
+            });
+
+            const submitter = event.submitter;
+            if (submitter) {
+                submitter.dataset.originalText = submitter.textContent;
+                submitter.textContent = PROJECT2_ACTION_LABELS[submitter.value] || 'Working…';
+            }
+
+            const loadingBanner = document.getElementById('project2-loading');
+            if (loadingBanner) {
+                loadingBanner.classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock script %}

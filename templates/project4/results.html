@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project4/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">Your estimated preferences</div>
+    </div>
+
+    <div class="main-text">
+        <p class="centered-text">
+            Fitted from {{ num_responses }} {{ config.label|lower }} response{{ num_responses|pluralize }}
+            using a Plackett-Luce (Bradley-Terry generalized to rankings) preference model.
+        </p>
+
+        <div class="metric-grid">
+            {% if validation_accuracy is not None %}
+            <div class="metric-tile highlight">
+                <span class="value">{{ validation_accuracy|floatformat:2 }}</span>
+                <span class="label">Validation accuracy ({{ num_validation }} held-out questions)</span>
+            </div>
+            {% endif %}
+            <div class="metric-tile">
+                <span class="value">{{ num_responses }}</span>
+                <span class="label">Responses used</span>
+            </div>
+        </div>
+
+        <details class="section" open>
+            <summary><h2>What mattered most to you</h2></summary>
+            <table class="summary-table">
+                <thead>
+                    <tr><th>Feature</th><th>Weight</th></tr>
+                </thead>
+                <tbody>
+                    {% for name, weight in top_features %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ weight|floatformat:3 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="centered-text">
+                <em>Positive weight = you tended to prefer more of this feature; negative = less.</em>
+            </p>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>Top 5 recommendations for you</h2></summary>
+            <table class="summary-table">
+                <thead>
+                    <tr><th>Movie</th><th>Genres</th><th>Year</th><th>IMDB score</th></tr>
+                </thead>
+                <tbody>
+                    {% for movie in top_movies %}
+                    <tr>
+                        <td>{{ movie.title }}</td>
+                        <td>{{ movie.genres }}</td>
+                        <td>{{ movie.year }}</td>
+                        <td>{{ movie.imdb_score }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+
+        <p class="centered-text"><a href="{% url 'project4:index' %}">&larr; Back to Project 4</a></p>
+    </div>
+</div>
+
+{% endblock %}

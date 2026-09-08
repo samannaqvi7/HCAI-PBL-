@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project4/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">Project 4 &ndash; Preference Elicitation</div>
+    </div>
+
+    <div class="main-text">
+        <p class="centered-text">
+            This project designs and implements two interfaces for eliciting a new user's
+            movie preferences (IMDB 5000 Movie Dataset), under a shared Bradley-Terry /
+            Plackett-Luce preference model: <strong>Design 1</strong> repeatedly asks you to
+            pick your preferred movie from a pair; <strong>Design 2</strong> asks you to rank
+            a set of ten movies from most to least preferred. A full user-study protocol
+            comparing the two (not run, per the assignment) is described in the report below.
+        </p>
+
+        <details class="section" open>
+            <summary><h2>Report</h2></summary>
+            <p class="centered-text">
+                Feature representation and justification (Task 1), the Plackett-Luce
+                extension of Bradley-Terry to rankings (Task 2), and the complete user-study
+                design (Task 3).
+            </p>
+            <div class="button-container">
+                <a href="{% url 'project4:download_report' %}"><button type="button">Download report (PDF)</button></a>
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary><h2>Enter the study</h2></summary>
+            <p class="centered-text">
+                You will be randomly assigned to one of the two designs, the same way a
+                real participant would be.
+            </p>
+            <div class="entry-links">
+                <a href="{% url 'project4:start_study' %}"><button type="button">Enter the study</button></a>
+            </div>
+        </details>
+    </div>
+</div>
+
+{% endblock %}

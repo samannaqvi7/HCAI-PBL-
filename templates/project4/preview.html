@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project4/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">Project 4 &ndash; Preview</div>
+    </div>
+
+    <div class="main-text">
+        <p class="centered-text">
+            Direct links to each design, bypassing random assignment. This page is not
+            linked from the participant-facing landing page &mdash; it's only for
+            inspecting each interface directly.
+        </p>
+        <div class="entry-links">
+            <a href="{% url 'project4:study' '1' %}"><button type="button">Preview Design 1 (pairwise)</button></a>
+            <a href="{% url 'project4:study' '2' %}"><button type="button">Preview Design 2 (ranking)</button></a>
+        </div>
+        <p class="centered-text"><a href="{% url 'project4:index' %}">&larr; Back to the landing page</a></p>
+    </div>
+</div>
+
+{% endblock %}

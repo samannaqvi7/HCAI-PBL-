@@ -11,6 +11,9 @@
     </head>
     <body>
         <div class="grid-parent">
+            {% block back_link %}
+            <div class="back-link"><a href="{% url 'home:index' %}">&larr; Back to home</a></div>
+            {% endblock %}
             {% block content %}
             {%  endblock %}
         </div>

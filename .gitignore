@@ -179,5 +179,12 @@ cython_debug/
 # Uploaded datasets / generated plots (runtime data, not source)
 media/*
 
+# project3 precomputed models/metrics/plots/report (regenerate via
+# `python manage.py build_project3`, not part of the submission's source)
+project3/artifacts/
+
+# project4's generated PDF report (built lazily on first download request)
+project4/artifacts/
+
 # Course handout PDFs (not part of the submission)
 HCAI-project_*.pdf

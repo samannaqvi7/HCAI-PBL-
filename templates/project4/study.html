@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'project4/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="box">
+    <div class="title-container">
+        <div class="title">
+            {% if is_validation %}Validation question{% else %}{{ config.label }}{% endif %}
+        </div>
+    </div>
+
+    <div class="main-text">
+        <p class="progress-text centered-text">
+            {% if is_validation %}
+                Validation question {{ round_number }} of {{ total_rounds }} &mdash;
+                these don't affect your estimated preferences, they're only used afterward
+                to check how well the fitted model predicts your choices.
+            {% else %}
+                Round {{ round_number }} of {{ total_rounds }}
+            {% endif %}
+        </p>
+
+        {% if design == '1' or is_validation %}
+        <form method="POST">
+            {% csrf_token %}
+            <div class="pairwise-row">
+                {% for movie in pending_movies %}
+                <div class="movie-card">
+                    <h3>{{ movie.title }}</h3>
+                    <p>{{ movie.genres }}</p>
+                    <p>{{ movie.year }} &middot; {{ movie.duration|floatformat:0 }} min &middot; {{ movie.content_rating }}</p>
+                    <p>Director: {{ movie.director }}</p>
+                    <button type="submit" name="winner" value="{{ movie.index }}">I'd rather watch this</button>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
+
+        {% else %}
+        <form method="POST">
+            {% csrf_token %}
+            <table class="ranking-table">
+                <thead>
+                    <tr><th>Movie</th><th>Details</th><th>Rank</th></tr>
+                </thead>
+                <tbody>
+                    {% for movie in pending_movies %}
+                    <tr>
+                        <td>{{ movie.title }}</td>
+                        <td>{{ movie.genres }} &middot; {{ movie.year }} &middot; {{ movie.content_rating }}</td>
+                        <td>
+                            <select name="rank_{{ movie.index }}" required>
+                                <option value="">--</option>
+                                {% for p in positions %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="centered-text">
+                Assign each movie a unique rank from 1 (most preferred) to {{ positions|length }} (least preferred).
+            </p>
+            <div class="button-container">
+                <button type="submit">Submit ranking</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
