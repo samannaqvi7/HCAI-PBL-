@@ -173,7 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Claude Code local config
+# Local editor/tooling config
 .claude/
 
 # Uploaded datasets / generated plots (runtime data, not source)
