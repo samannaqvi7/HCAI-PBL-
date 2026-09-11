@@ -186,5 +186,11 @@ project3/artifacts/
 # project4's generated PDF report (built lazily on first download request)
 project4/artifacts/
 
+# macOS Finder metadata
+.DS_Store
+
+# Backup files left by manual edits (e.g. requirements.txt.bak)
+*.bak
+
 # Course handout PDFs (not part of the submission)
 HCAI-project_*.pdf
